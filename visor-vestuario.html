@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Visor de vestimenta</title>
+<style>
+:root{--bg:#e8ecf2;--panel:#f6f8fb;--ink:#1b2333;--mute:#6b7488;--line:#cfd6e2;--acc:#3552ff;--acc-ink:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#11151e;--panel:#1a2030;--ink:#eef1f8;--mute:#8f99b0;--line:#2c3550;--acc:#7b90ff;--acc-ink:#0d1226}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent}
+main{max-width:460px;margin:0 auto;padding:18px 16px 28px}
+.outfit{position:relative;height:min(78vh,660px);background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.stage{position:absolute;left:0;right:0;touch-action:pan-y;user-select:none}
+#st-top{top:0;height:36%;z-index:3}
+#st-bottom{top:31%;height:52%;z-index:2}
+#st-shoes{top:80%;height:20%;z-index:1}
+.view{height:100%;display:flex;justify-content:center;padding:0 10px}
+#v-top{align-items:flex-end;padding-top:12px}
+#v-bottom{align-items:flex-start;padding-bottom:10px}
+#v-shoes{align-items:flex-start;padding-bottom:8px}
+.view img,.view svg{max-height:100%;max-width:100%;display:block;pointer-events:none}
+.view.l{animation:inl .22s ease-out}.view.r{animation:inr .22s ease-out}
+@keyframes inl{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
+@keyframes inr{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.view.l,.view.r{animation:none}}
+.nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-size:18px;cursor:pointer}
+.nav.p{left:8px}.nav.n{right:8px}
+.nav:focus-visible,button:focus-visible,.stage:focus-visible{outline:3px solid var(--acc);outline-offset:-3px}
+.bar{display:flex;align-items:center;gap:8px;padding:8px 12px;margin-top:8px;border:1px solid var(--line);border-radius:12px;background:var(--panel);font-size:14px}
+.bar .name{flex:1;min-width:0;background:none;border:0;color:inherit;font:inherit;font-weight:600;text-align:left;padding:8px 0;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .name::after{content:" ▾";color:var(--mute)}
+.sheet{position:fixed;inset:0;z-index:10;display:flex;align-items:flex-end;justify-content:center}
+.sheet[hidden]{display:none}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.45)}
+.panel{position:relative;width:100%;max-width:460px;max-height:72vh;display:flex;flex-direction:column;background:var(--panel);border-radius:18px 18px 0 0;padding-bottom:env(safe-area-inset-bottom,0px)}
+.ph{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 8px;font-weight:800;font-size:17px}
+.list{overflow-y:auto;padding:4px 12px 14px;display:flex;flex-direction:column;gap:6px}
+.it{display:flex;align-items:center;gap:12px;width:100%;padding:8px;border:1px solid var(--line);border-radius:12px;background:transparent;color:var(--ink);font:inherit;font-weight:600;text-align:left;cursor:pointer}
+.it[aria-current="true"]{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+.th{flex:none;width:54px;height:54px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.th img,.th svg{max-width:100%;max-height:100%;display:block}
+.it span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:10px;padding:6px 9px;font:inherit;font-size:13px;cursor:pointer}
+.mini[aria-pressed="true"]{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.big{width:100%;margin-top:12px;background:var(--acc);color:var(--acc-ink);border:0;border-radius:14px;padding:14px;font:inherit;font-weight:800;font-size:17px;cursor:pointer}
+</style>
+</head>
+<body>
+<main>
+  <div class="outfit">
+    <section class="stage" id="st-shoes" aria-label="Calzados">
+      <div class="view" id="v-shoes"></div>
+      <button class="nav p" data-k="shoes" data-d="-1" aria-label="Calzado anterior">‹</button>
+      <button class="nav n" data-k="shoes" data-d="1" aria-label="Calzado siguiente">›</button>
+    </section>
+    <section class="stage" id="st-bottom" aria-label="Pantalones">
+      <div class="view" id="v-bottom"></div>
+      <button class="nav p" data-k="bottom" data-d="-1" aria-label="Pantalón anterior">‹</button>
+      <button class="nav n" data-k="bottom" data-d="1" aria-label="Pantalón siguiente">›</button>
+    </section>
+    <section class="stage" id="st-top" aria-label="Remeras">
+      <div class="view" id="v-top"></div>
+      <button class="nav p" data-k="top" data-d="-1" aria-label="Remera anterior">‹</button>
+      <button class="nav n" data-k="top" data-d="1" aria-label="Remera siguiente">›</button>
+    </section>
+  </div>
+  <button class="big" id="shuffle">Combinar al azar</button>
+  <div class="bar"><button class="name" id="n-top" aria-haspopup="dialog" aria-label="Elegir remera"></button>
+    <button class="mini" id="lk-top" aria-pressed="false">Fijar</button></div>
+  <div class="bar"><button class="name" id="n-bottom" aria-haspopup="dialog" aria-label="Elegir pantalón"></button>
+    <button class="mini" id="lk-bottom" aria-pressed="false">Fijar</button></div>
+  <div class="bar"><button class="name" id="n-shoes" aria-haspopup="dialog" aria-label="Elegir calzado"></button>
+    <button class="mini" id="lk-shoes" aria-pressed="false">Fijar</button></div>
+</main>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="scrim" id="scrim"></div>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="ph"><span id="sheet-title"></span><button class="mini" id="sheet-x" aria-label="Cerrar">✕</button></div>
+    <div class="list" id="list"></div>
+  </div>
+</div>
+
+<script>
+/* ==================================================================
+   PEGÁ TUS URLs DE CLOUDINARY ACÁ (una por línea, sin comillas ni comas)
+   El nombre que se muestra es el nombre del archivo en la URL.
+   Las líneas que empiezan con # se ignoran.
+   Si dejás un bloque vacío, se muestran prendas de ejemplo.
+   ================================================================== */
+
+var URLS_REMERAS = `
+# https://res.cloudinary.com/TU_CUENTA/image/upload/v1/remera_blanca.png
+`;
+
+var URLS_PANTALONES = `
+# https://res.cloudinary.com/TU_CUENTA/image/upload/v1/jean_azul.png
+`;
+
+var URLS_CALZADOS = `
+# https://res.cloudinary.com/TU_CUENTA/image/upload/v1/zapatillas_blancas.png
+`;
+
+/* ================================================================== */
+
+(function(){
+  var SH='rgba(0,0,0,.22)', KINDS=['top','bottom','shoes'];
+  function $(id){return document.getElementById(id)}
+
+  // Prendas de ejemplo (se usan si el bloque de URLs está vacío)
+  function tee(c,st){
+    var b='<path d="M70 20 L40 35 L10 70 L35 90 L55 75 L55 180 L145 180 L145 75 L165 90 L190 70 L160 35 L130 20 Q100 42 70 20Z" fill="'+c+'" stroke="'+SH+'" stroke-width="2" stroke-linejoin="round"/>';
+    if(st==='Formal') b+='<path d="M70 20 L100 52 L130 20 L118 16 L100 34 L82 16Z" fill="rgba(255,255,255,.55)" stroke="'+SH+'" stroke-width="1.5"/><path d="M100 52 V180" stroke="'+SH+'" stroke-width="1.5"/>';
+    else if(st==='Deportivo') b+='<path d="M55 78 V180 M145 78 V180" stroke="rgba(255,255,255,.8)" stroke-width="6"/>';
+    return '<svg viewBox="0 10 200 175" width="800" height="700" role="img">'+b+'</svg>';
+  }
+  function pants(c,st){
+    var b='<path d="M52 10 L148 10 L156 250 L108 250 L100 85 L92 250 L44 250Z" fill="'+c+'" stroke="'+SH+'" stroke-width="2" stroke-linejoin="round"/><rect x="52" y="10" width="96" height="16" fill="rgba(0,0,0,.14)"/>';
+    if(st==='Formal') b+='<path d="M72 30 L68 250 M128 30 L132 250" stroke="rgba(255,255,255,.35)" stroke-width="2"/>';
+    else if(st==='Deportivo') b+='<path d="M56 30 L52 250 M144 30 L148 250" stroke="rgba(255,255,255,.8)" stroke-width="5"/>';
+    return '<svg viewBox="0 8 200 244" width="800" height="976" role="img">'+b+'</svg>';
+  }
+  function shoes(up,sole,st){
+    function one(cx){
+      var b='<path d="M'+(cx-24)+' 40 Q'+(cx-27)+' 14 '+(cx-8)+' 10 L'+(cx+8)+' 10 Q'+(cx+27)+' 14 '+(cx+24)+' 40Z" fill="'+up+'" stroke="'+SH+'" stroke-width="1.5"/>'
+        +'<rect x="'+(cx-27)+'" y="40" width="54" height="10" rx="5" fill="'+sole+'" stroke="'+SH+'" stroke-width="1.5"/>';
+      if(st==='Formal') b+='<path d="M'+(cx-14)+' 20 Q'+cx+' 14 '+(cx+14)+' 20" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="2"/>';
+      else if(st==='Deportivo') b+='<path d="M'+(cx-20)+' 36 L'+(cx+20)+' 36" stroke="rgba(255,255,255,.85)" stroke-width="5"/>';
+      else b+='<path d="M'+(cx-6)+' 12 V34 M'+(cx+6)+' 12 V34" stroke="'+SH+'" stroke-width="1.5"/>';
+      return b;
+    }
+    return '<svg viewBox="0 0 150 55" width="800" height="293" role="img">'+one(37)+one(113)+'</svg>';
+  }
+  var items={
+    top:[{n:'remera_blanca',s:'Casual',svg:tee('#f1f1ee','Casual')},{n:'camisa_celeste',s:'Formal',svg:tee('#9fc4e8','Formal')},{n:'remera_roja_deportiva',s:'Deportivo',svg:tee('#d8473d','Deportivo')},{n:'remera_negra',s:'Casual',svg:tee('#252830','Casual')}],
+    bottom:[{n:'jean_azul',s:'Casual',svg:pants('#34527f','Casual')},{n:'pantalon_vestir_gris',s:'Formal',svg:pants('#6c717c','Formal')},{n:'jogger_negro',s:'Deportivo',svg:pants('#23252b','Deportivo')},{n:'chino_beige',s:'Casual',svg:pants('#c9b392','Casual')}],
+    shoes:[{n:'zapatillas_blancas',s:'Casual',svg:shoes('#f1f1ee','#b9bec9','Casual')},{n:'zapatos_negros',s:'Formal',svg:shoes('#1f2128','#0c0d10','Formal')},{n:'zapatillas_running',s:'Deportivo',svg:shoes('#d8473d','#f1f1ee','Deportivo')}]
+  };
+  var idx={top:0,bottom:0,shoes:0}, locked={top:false,bottom:false,shoes:false};
+
+  function render(k,dir){
+    var it=items[k][idx[k]], v=$('v-'+k);
+    v.className='view'+(dir?(dir>0?' l':' r'):'');
+    if(it.img){v.innerHTML='';var im=new Image();im.src=it.img;im.alt=it.n;v.appendChild(im)}
+    else v.innerHTML=it.svg;
+    $('n-'+k).textContent=it.n;
+  }
+  function go(k,d){var n=items[k].length;idx[k]=(idx[k]+d+n)%n;render(k,d)}
+
+  document.querySelectorAll('.nav').forEach(function(b){
+    b.addEventListener('click',function(){go(b.dataset.k,+b.dataset.d)});
+  });
+  KINDS.forEach(function(k){
+    var el=$('st-'+k), x0=null;
+    el.tabIndex=0;
+    el.addEventListener('pointerdown',function(e){if(!e.target.closest('button'))x0=e.clientX});
+    el.addEventListener('pointerup',function(e){
+      if(x0===null)return;
+      var dx=e.clientX-x0;x0=null;
+      if(Math.abs(dx)>40)go(k,dx<0?1:-1);
+    });
+    el.addEventListener('pointercancel',function(){x0=null});
+    el.addEventListener('keydown',function(e){
+      if(e.key==='ArrowRight')go(k,1);
+      if(e.key==='ArrowLeft')go(k,-1);
+    });
+    $('lk-'+k).addEventListener('click',function(){
+      locked[k]=!locked[k];
+      this.setAttribute('aria-pressed',locked[k]);
+      this.textContent=locked[k]?'Fijada':'Fijar';
+    });
+  });
+  $('shuffle').addEventListener('click',function(){
+    KINDS.forEach(function(k){
+      if(locked[k]||items[k].length<2)return;
+      var n;do{n=Math.floor(Math.random()*items[k].length)}while(n===idx[k]);
+      idx[k]=n;render(k,1);
+    });
+  });
+
+  // ---- Carga de imágenes desde las URLs ----
+  function parse(t){
+    return t.split('\n').map(function(s){return s.trim()}).filter(function(s){return s&&s.charAt(0)!=='#'});
+  }
+  function nameOf(u){
+    var n=u.split('?')[0].split('#')[0].split('/').pop();
+    try{n=decodeURIComponent(n)}catch(e){}
+    return n.replace(/\.(png|jpe?g|webp|gif|avif)$/i,'');
+  }
+  // Si la imagen tiene fondo liso (sin transparencia), lo recorta; si no se puede, la usa tal cual.
+  function prep(src){
+    return new Promise(function(res){
+      function run(cors){
+        var im=new Image();
+        if(cors)im.crossOrigin='anonymous';
+        im.onerror=function(){cors?run(false):res(null)};
+        im.onload=function(){
+          try{
+            var m=800,sc=Math.min(1,m/Math.max(im.width,im.height));
+            var w=Math.round(im.width*sc),h=Math.round(im.height*sc);
+            var c=document.createElement('canvas');c.width=w;c.height=h;
+            var x=c.getContext('2d');x.drawImage(im,0,0,w,h);
+            var d=x.getImageData(0,0,w,h),p=d.data;
+            if(p[3]<250){res(src);return}
+            var br=0,bg=0,bb=0;
+            [0,(w-1)*4,(h-1)*w*4,((h-1)*w+w-1)*4].forEach(function(o){br+=p[o];bg+=p[o+1];bb+=p[o+2]});
+            br/=4;bg/=4;bb/=4;
+            var seen=new Uint8Array(w*h),st=[],T=2304;
+            var ok=function(i){var o=i*4,dr=p[o]-br,dg=p[o+1]-bg,db=p[o+2]-bb;return dr*dr+dg*dg+db*db<T};
+            var push=function(i){if(!seen[i]&&ok(i)){seen[i]=1;st.push(i)}};
+            for(var a=0;a<w;a++){push(a);push((h-1)*w+a)}
+            for(var q=0;q<h;q++){push(q*w);push(q*w+w-1)}
+            while(st.length){
+              var i=st.pop(),px=i%w,py=(i/w)|0;
+              p[i*4+3]=0;
+              if(px>0)push(i-1);if(px<w-1)push(i+1);if(py>0)push(i-w);if(py<h-1)push(i+w);
+            }
+            x.putImageData(d,0,0);
+            res(c.toDataURL('image/png'));
+          }catch(e){res(src)}
+        };
+        im.src=src;
+      }
+      run(true);
+    });
+  }
+  function load(k,text){
+    var urls=parse(text);
+    if(!urls.length)return;
+    Promise.all(urls.map(function(u){
+      return prep(u).then(function(img){return img&&{n:nameOf(u),s:'',img:img}});
+    })).then(function(list){
+      list=list.filter(Boolean);
+      if(!list.length)return;
+      items[k]=list;idx[k]=0;render(k,0);
+    });
+  }
+  load('top',URLS_REMERAS);
+  load('bottom',URLS_PANTALONES);
+  load('shoes',URLS_CALZADOS);
+
+  // ---- Lista para elegir una prenda puntual ----
+  var TITLES={top:'Remeras',bottom:'Pantalones',shoes:'Calzados'}, opener=null;
+  function closeSheet(){
+    $('sheet').hidden=true;
+    if(opener){opener.focus();opener=null}
+  }
+  function openSheet(k,btn){
+    opener=btn;
+    $('sheet-title').textContent=TITLES[k];
+    var list=$('list');list.innerHTML='';
+    var cur=null;
+    items[k].forEach(function(it,i){
+      var b=document.createElement('button');
+      b.className='it';
+      if(i===idx[k]){b.setAttribute('aria-current','true');cur=b}
+      var th=document.createElement('span');th.className='th';
+      if(it.img){var im=new Image();im.src=it.img;im.alt='';im.loading='lazy';th.appendChild(im)}
+      else th.innerHTML=it.svg;
+      var nm=document.createElement('span');nm.textContent=it.n;
+      b.appendChild(th);b.appendChild(nm);
+      b.addEventListener('click',function(){idx[k]=i;render(k,0);closeSheet()});
+      list.appendChild(b);
+    });
+    $('sheet').hidden=false;
+    (cur||list.firstChild).focus();
+    if(cur)cur.scrollIntoView({block:'center'});
+  }
+  KINDS.forEach(function(k){
+    $('n-'+k).addEventListener('click',function(){openSheet(k,this)});
+  });
+  $('scrim').addEventListener('click',closeSheet);
+  $('sheet-x').addEventListener('click',closeSheet);
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'&&!$('sheet').hidden)closeSheet();
+  });
+
+  KINDS.forEach(function(k){render(k,0)});
+})();
+</script>
+</body>
+</html>
